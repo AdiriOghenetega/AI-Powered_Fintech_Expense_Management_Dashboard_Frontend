@@ -188,7 +188,7 @@ PORT=3001
 NODE_ENV=development
 
 # Frontend
-VITE_API_URL=http://localhost:3001/api
+VITE_API_URL='https://ai-powered-fintech-expense-management.onrender.com/api'
 ```
 
 ### Optional Variables
