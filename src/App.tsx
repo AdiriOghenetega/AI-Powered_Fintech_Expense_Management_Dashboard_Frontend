@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -20,13 +20,31 @@ import { ReportsPage } from "@/pages/Reports";
 import { BudgetsPage } from "@/pages/Budgets";
 import { AnalyticsPage } from "@/pages/Analytics";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { BackendWarmup } from "@/components/common/BackendWarmup";
+import { useBackendWarmup } from "@/hooks/useBackendWarmup";
+import { onBackendWarmupNeeded } from "@/services/api";
 import { CreditCard } from "lucide-react";
 
+// Configure React Query with custom error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        // Don't retry if backend needs warmup
+        if (error?.needsWarmup) return false;
+        // Otherwise retry once
+        return failureCount < 1;
+      },
+      // Show error notifications
+      throwOnError: false,
+    },
+    mutations: {
+      retry: (error: any) => {
+        // Don't retry if backend needs warmup
+        if (error?.needsWarmup) return false;
+        return false; // Don't retry mutations by default
+      },
     },
   },
 });
@@ -82,9 +100,50 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const AppContent: React.FC = () => {
   const authState = useAuthState();
+  const { isWarming, handleRequestError, startWarmup } = useBackendWarmup({
+    pingInterval: 3000,
+    timeout: 120000,
+  });
+
+  // Listen for warmup events from the API layer
+  useEffect(() => {
+    const unsubscribe = onBackendWarmupNeeded((needsWarmup) => {
+      if (needsWarmup) {
+        startWarmup();
+      }
+    });
+
+    return unsubscribe;
+  }, [startWarmup]);
+
+  // Add global error handler for React Query
+  useEffect(() => {
+    const errorHandler = (error: any) => {
+      if (error?.needsWarmup || error?.isBackendDown) {
+        handleRequestError(error);
+      }
+    };
+
+    // Listen to query client errors
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.type === 'observerResultsUpdated') {
+        const query = event.query;
+        if (query.state.error) {
+          errorHandler(query.state.error);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [handleRequestError]);
 
   return (
     <AuthContext.Provider value={authState}>
+      {/* Backend Warmup Overlay */}
+      <BackendWarmup isWarming={isWarming} />
+
       <Router>
         <Routes>
           <Route
