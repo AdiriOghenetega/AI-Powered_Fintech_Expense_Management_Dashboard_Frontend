@@ -52,10 +52,7 @@ export const BackendWarmup: React.FC<BackendWarmupProps> = ({
   return (
     <div className="fixed inset-0 bg-white backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        <Card variant="elevated" className="relative overflow-hidden">
-          {/* Animated gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 animate-pulse" />
-          
+        <Card variant="glass" className="relative overflow-hidden">      
           <div className="relative p-8 text-center space-y-6">
             {/* Server icon with animation */}
             <div className="relative mx-auto w-24 h-24">
